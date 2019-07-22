@@ -5,7 +5,7 @@ tags:
 - data science
 - todo
 - tips
-- yazidkurdi
+- tricks
 - R
 title: 'Methods that helped in learning R'
 
