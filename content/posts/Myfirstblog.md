@@ -4,6 +4,8 @@ description: 'Workflow that helped me in my journey to this day.'
 tags:
 - data science
 - todo
+- tips
+- yazidkurdi
 title: 'Self taught data scientist, my first blog post!'
 ---
 
@@ -11,7 +13,7 @@ This post is going to be an extended version of "About me", how I think, solve i
 decided to re-ignite my interest in data science from my previous work. I had zero experience in coding and moderate statistical knowledge. 
 
 Since I have stopped working I built an 8 hour schedule per day rule of studying R and I stuck 
-to it, I tried to learn everything, even if I did not fully absorb the material I would power through, it will be frustrating but it will be worth it when the "light bulb" in your head switches on and you start understanding the topic better.
+to it, I tried to learn everything, even if I did not fully absorb the material I would power through, however frustrating it might be, it will be worth it when the "light bulb" in your head switches on , and you start understanding the topic better.
 
 By no means this was easy, but having a thought out workflow makes it less hard. In no particular order, these methods aided in my journey in becoming a data scientist.
 
