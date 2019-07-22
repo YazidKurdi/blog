@@ -1,4 +1,4 @@
-baseURL = "http://example.org/"
+baseURL = "https://www.yazidkurdi.com"
 languageCode = "en-us"
 title = "Yazid Kurdi"
 theme = "ezhil"
@@ -8,7 +8,7 @@ pygmentscodefences = true
 pygmentscodefencesguesssyntax = true
 
 googleAnalytics = "UA-123-45"
-disqusShortname = "localhost"
+disqusShortname = "yazidkurdi-netlify-com"
 
 [params]
 	subtitle = "Personal Blog"
