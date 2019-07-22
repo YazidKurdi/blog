@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on Yazid Kurdi</title>
+    <link>/posts/</link>
+    <description>Recent content in Posts on Yazid Kurdi</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 22 Jul 2019 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/posts/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Self taught data scientist, my first blog post!</title>
+      <link>/posts/myfirstblog/</link>
+      <pubDate>Mon, 22 Jul 2019 00:00:00 +0000</pubDate>
+      
+      <guid>/posts/myfirstblog/</guid>
+      <description>This post is going to be an extended version of &amp;ldquo;About me&amp;rdquo;, how I think, solve issues and how I learned R language on my own. Having finished my Bacholers degree in Industrial Engineering and putting a stop to my E-sports career I decided to re-ignite my interest in data science from my previous work. I had zero experience in coding and moderate statistical knowledge.
+Since I have stopped working I built an 8 hour schedule per day rule of studying R and I stuck to it, I tried to learn everything, even if I did not fully absorb the material I would power through, it will be frustrating but it will be worth it when the &amp;ldquo;light bulb&amp;rdquo; in your head switches on and you start understanding the topic better.</description>
+    </item>
+    
+  </channel>
+</rss>

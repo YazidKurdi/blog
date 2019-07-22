@@ -1,0 +1,50 @@
+baseURL = "http://example.org/"
+languageCode = "en-us"
+title = "Yazid Kurdi"
+theme = "ezhil"
+
+pygmentsstyle = "vs"
+pygmentscodefences = true
+pygmentscodefencesguesssyntax = true
+
+googleAnalytics = "UA-123-45"
+disqusShortname = "localhost"
+
+[params]
+	subtitle = "Personal Blog"
+	# Number of posts to show in recent posts list.
+	recentPostsCount = 10
+	# Content types which are excluded from recent posts and archive page.
+	excludedTypes = ["page"]
+	disableDisqusTypes = ["page"]
+	featherIconsCDN = true
+
+[[menu.main]]
+name = "Home"
+url = "/"
+weight = 1
+
+[[menu.main]]
+name = "All posts"
+url = "/posts"
+weight = 2
+
+[[menu.main]]
+name = "About"
+url = "/about"
+weight = 3
+
+
+[[params.social]]
+name = "Github"
+icon = "github"
+url = "https://github.com/YazidKurdi"
+
+[[params.social]]
+name = "Twitter"
+icon = "twitter"
+url = "https://twitter.com/laTalCSGO"
+
+
+[taxonomies]
+   tag = "tags"
