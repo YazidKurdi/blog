@@ -7,6 +7,7 @@ tags:
 - tips
 - yazidkurdi
 title: 'Self taught data scientist, my first blog post!'
+disqus: FALSE
 ---
 
 This post is going to be an extended version of "About me", how I think, solve issues and how I learned R language on my own. Having finished my Bacholers degree in Industrial Engineering and putting a stop to my E-sports career, I 
@@ -51,8 +52,7 @@ Provides introductory statistics tutorials that are full length lessons, I enhan
 
 ## Saving functions
 
-While taking courses, watching screencasts or discovering new functions, I would save the workflow of these functions, to have a base line to look back to when something goes wrong. Aggregating them based on functionality would direct
-me on where to look.
+While taking courses, watching screencasts or discovering new functions, I would mimic the code that was written and save the workflow of these functions, to have a base line to look back to when something goes wrong. Aggregating them based on functionality would direct me on where to look.
 
 ![](/posts/post-1_files/Functions.PNG)
 
