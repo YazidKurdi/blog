@@ -1,13 +1,14 @@
 ---
 date: "2019-07-22"
-description: 'Workflow that helped me in my journey to this day.'
+description: 'Detailed workflow of the methods that helped me in my journey to this day.'
 tags:
 - data science
 - todo
 - tips
 - yazidkurdi
-title: 'Self taught data scientist, my first blog post!'
-disqus: TRUE
+- R
+title: 'Methods that helped in learning R'
+
 ---
 
 This post is going to be an extended version of "About me", how I think, solve issues and how I learned R language on my own. Having finished my Bacholers degree in Industrial Engineering and putting a stop to my E-sports career, I 
