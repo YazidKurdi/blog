@@ -32,7 +32,7 @@ topics that interest me would get me out of my slump. Following hashtags and con
 ## To-do list / bookmarks
 
 Continuing on the previous method, after finding attractive topics I would add it to my simple Notepad To-do list that would remind me of my priorities as my memory is not the strongest. I would make sure not to remove anything until
-I have fully understood it. As well as bookmarking certain topics that were of interest and aggregating them based on thier general topic.
+I have fully understood it. As well as bookmarking certain topics that were of interest and aggregating them based on their general topic.
 
 <img src="/posts/post-1_files/Combined.PNG" alt="" width="50%"/>
 
@@ -57,7 +57,7 @@ While taking courses, watching screencasts or discovering new functions, I would
 
 ![](/posts/post-1_files/Functions.PNG)
 
-
+As an example of a aggregated file, (Visualization tips)[https://github.com/YazidKurdi/blog/blob/master/Examples/Visualization%20tips.R] code is provided.
 These methods helped me tremendously increase the rate of learning, I hope it can help you as well!
 
 Future posts will be more technical work that contains EDA,modelling, data visualization and machine learning.
