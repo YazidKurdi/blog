@@ -57,7 +57,7 @@ While taking courses, watching screencasts or discovering new functions, I would
 
 ![](/posts/post-1_files/Functions.PNG)
 
-As an example of a aggregated file, [Visualization tips](https://github.com/YazidKurdi/blog/blob/master/Examples/Visualization%20tips.R) code is provided.
+Example of an aggregated file, [Visualization tips](https://github.com/YazidKurdi/blog/blob/master/Examples/Visualization%20tips.R) code is provided.
 
 These methods helped me tremendously increase the rate of learning, I hope it can help you as well!
 
