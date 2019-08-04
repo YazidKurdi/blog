@@ -43,8 +43,12 @@ url = "https://github.com/YazidKurdi"
 [[params.social]]
 name = "Twitter"
 icon = "twitter"
-url = "https://twitter.com/laTalCSGO"
+url = "https://twitter.com/YazidKurdiR"
 
+[[params.social]]
+name = "LinkedIn"
+icon = "LinkedIn"
+url = "https://www.linkedin.com/in/yazid-kurdi-066b53181/"
 
 [taxonomies]
    tag = "tags"
