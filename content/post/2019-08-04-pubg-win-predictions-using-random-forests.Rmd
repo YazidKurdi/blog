@@ -59,8 +59,8 @@ We start with exploring the dataset using a simple summary function and visualiz
 
 Fortunatly, the dataset is pretty clean with no missing data, as cleaning a dataset of missing values can take the majority of time for the whole analysis. 
 
-For a detailed description of each variable you can visit them on this [kaggle](https://www.kaggle.com/c/pubg-finish-placement-prediction/data) competition.
-```{r echo=FALSE,message = FALSE}
+For a detailed description of each variable you can visit them on this [Kaggle](https://www.kaggle.com/c/pubg-finish-placement-prediction/data) competition.
+```{r echo=FALSE,message = FALSE,warning = FALSE}
 summary(train_frac)
 
 full %>%
@@ -72,7 +72,8 @@ full %>%
 
 A correlation plot describes the relationship of numeric variables with each other, a higher magnitude indicates how correlated the variables are, and the sign indicates the direction.
 
-Out of the 25 variables, 9 variables were filtered based on an absolute value of 0.4 correlation value.
+Out of the 25 variables, 9 variables were filtered based on having an absolute value of 0.4 or higher.
+
 Walk distance and KillPlace show heavy correlation with the target variable.
 
 
@@ -96,11 +97,11 @@ corrplot.mixed(cor_numVar, tl.col="black", tl.pos = "lt", tl.cex = 0.7,cl.cex = 
 
 ### Combining features
 
-Can new variables explain the underlying trend in our data better than our old wons?
+Can new variables explain the underlying trend in our data better than our old variables?
 
-Distance and kills are categories that are split into sub categories, Distance is split into walking,swimming and vehicle distance. Where as kills are split into headshot and normal kills.
+Distance and kills are categories that are split into sub categories, distance is split into walking,swimming and vehicle, While kills are split into headshot and normal kills.
 
-Uniting the variables together does not make a significant difference for both kills and distance, we disregard the new "combined" variables.
+Uniting the variables together, we can see that it does not make a significant difference for both kills and distance, we disregard the new "combined" variables.
 
 ```{r,echo = FALSE}
 train_frac %>%
@@ -253,7 +254,7 @@ ggplot(rf_fit)
 
 ### Multiple models ensemble
 
-The above workflow generally works for a low number of data with not a-lot of hyperparameter tuning and cross validation, however when the dataset grows and hyperparameters become more complex, this will strain the RAM as there might be not enough space depending on how much RAM is present.
+The above workflow generally works for a low number of data with not a-lot of hyperparameter tuning and cross validation involved, however when the dataset grows and hyperparameters become more complex, this will strain the RAM as there might be not enough space depending on how much RAM is present.
 
 One solution would be to split the training set into multiple models, for example for a 20,000 row dataset, every 5000 rows are split and trained seperatly, and their predictions are averaged out.
 
