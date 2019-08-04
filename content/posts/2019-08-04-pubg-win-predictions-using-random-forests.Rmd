@@ -1,0 +1,289 @@
+---
+title: PUBG win predictions using random forests!
+author: Yazid Kurdi
+description: 'What statistics matters most in PUBG'
+date: '2019-08-04'
+slug: pubg-win-predictions-using-random-forests
+categories: []
+tags:
+  - R
+  - data science
+  - random forest
+  - big data
+editor_options: 
+  chunk_output_type: console
+---
+PlayerUnknown's Battlegrounds (PUBG) is an online multiplayer battle royale game developed and published by PUBG Corporation. In the game, up to one hundred players parachute onto an island and scavenge for weapons and equipment to kill others while avoiding getting killed themselves. The available safe area of the game's map decreases in size over time, directing surviving players into tighter areas to force encounters. The last player or team standing wins the round.
+
+What are the most important predictors that can accuratly predict wether a player loses or wins in a Pubg game?
+
+This short analysis will focus on simple EDA, modelling, predicting and a solution for large datasets modelling!
+
+Four libraries are used, trusty "tidyverse" for data manipulation and visualization, "corrplot" for correlation plot visuals, caret for modelling and predicting, scales for adjusting the scales of the graphs and finally base R for large dataset modelling.
+
+```{r,message=FALSE}
+library(tidyverse)
+library(corrplot)
+library(caret)
+library(scales)
+```
+
+```{r echo=FALSE,message = FALSE}
+train_raw <- read_csv("/Users/USER10/Desktop/Kaggle/Pubg/train_V2.csv",n_max = 100000)
+train <- train_raw%>%
+  mutate(set = "train")%>%
+  filter(!is.na(winPlacePerc))
+  
+
+test_raw <- read_csv("/Users/USER10/Desktop/Kaggle/Pubg/test_V2.csv",n_max = 100000)
+test <- test_raw %>%
+  mutate(set = "test",
+         winPlacePerc = NA)
+
+test_ID <- test %>% select(Id)
+
+
+sample <- read_csv("/Users/USER10/Desktop/Kaggle/Pubg/sample_submission_V2.csv")
+
+full <- rbind(train,test)
+
+
+set.seed(2019)
+train_frac <- sample_frac(train,0.2)%>%
+  filter(!is.na(winPlacePerc))
+
+```
+## EDA (Exploratory data analysis)
+
+We start with exploring the dataset using a simple summary function and visualizing the target variable using a histrogram.
+
+Fortunatly, the dataset is pretty clean with no missing data, as cleaning a dataset of missing values can take the majority of time for the whole analysis. 
+
+For a detailed description of each variable you can visit them on this [kaggle](https://www.kaggle.com/c/pubg-finish-placement-prediction/data) competition.
+```{r echo=FALSE,message = FALSE}
+summary(train_frac)
+
+full %>%
+  ggplot(aes(winPlacePerc))+
+  geom_histogram(fill = "steelblue")+
+  scale_x_continuous(labels = percent_format())+
+  labs(x = "Win percent",title = "Histogram of players win percentage.")
+```
+
+A correlation plot describes the relationship of numeric variables with each other, a higher magnitude indicates how correlated the variables are, and the sign indicates the direction.
+
+Out of the 25 variables, 9 variables were filtered based on an absolute value of 0.4 correlation value.
+Walk distance and KillPlace show heavy correlation with the target variable.
+
+
+
+```{r,echo = FALSE}
+all_numVar <- full %>%
+  select_if(is.numeric)
+
+cor_numVar <- cor(all_numVar, use="pairwise.complete.obs") #correlations of all numeric variables
+
+#sort on decreasing correlations with SalePrice
+cor_sorted <- as.matrix(sort(cor_numVar[,'winPlacePerc'], decreasing = TRUE))
+#select only high corelations
+CorHigh <- names(which(apply(cor_sorted, 1, function(x) abs(x)>0.4)))
+cor_numVar <- cor_numVar[CorHigh, CorHigh]
+
+corrplot.mixed(cor_numVar, tl.col="black", tl.pos = "lt", tl.cex = 0.7,cl.cex = .7, number.cex=.7)
+```
+
+## Feature Engineering
+
+### Combining features
+
+Can new variables explain the underlying trend in our data better than our old wons?
+
+Distance and kills are categories that are split into sub categories, Distance is split into walking,swimming and vehicle distance. Where as kills are split into headshot and normal kills.
+
+Uniting the variables together does not make a significant difference for both kills and distance, we disregard the new "combined" variables.
+
+```{r,echo = FALSE}
+train_frac %>%
+  select(winPlacePerc,headshotKills,kills)%>%
+  mutate(combined = headshotKills + kills)%>%
+  gather(type,value,-winPlacePerc)%>%
+  ggplot(aes(value,winPlacePerc))+
+  geom_point(fill = "steelblue")+
+  scale_y_continuous(labels = percent_format())+
+  facet_wrap(~type)+
+  coord_flip()+
+  theme(axis.title.y = element_blank(),
+        strip.background = element_rect(fill = "orange"), strip.text = element_text(colour = "white", face = "bold"))+
+  labs(title = "Can combined kills explain the data better than kills alone?")
+
+train_frac %>%
+  select(winPlacePerc,headshotKills,kills)%>%
+  mutate(combined = headshotKills + kills)%>%
+  cor()%>%
+  corrplot.mixed()
+
+by_distance <- train_frac %>%
+  select(winPlacePerc,walkDistance,rideDistance,swimDistance)%>%
+  mutate(combined = walkDistance+rideDistance+swimDistance)%>%
+  gather(type,value,-winPlacePerc)
+
+by_distance%>%
+  ggplot(aes(value,winPlacePerc))+
+  geom_point()+
+  geom_point(fill = "steelblue")+
+  scale_y_continuous(labels = percent_format())+
+  facet_wrap(~type)+
+  coord_flip()+
+  theme(axis.title.y = element_blank(),
+        strip.background = element_rect(fill = "orange"), strip.text = element_text(colour = "white", face = "bold"))+
+  labs(title = "Can combined distances explain the data better than walk alone?")
+
+train_frac %>%
+  select(winPlacePerc,walkDistance,rideDistance,swimDistance)%>%
+  mutate(overall = walkDistance+rideDistance+swimDistance)%>%
+  cor()%>%
+  corrplot.mixed()
+```
+
+### Creating features
+
+MatchType variable contains two features within it, game mode(Person perspective) and group(squad,solo,duo).
+
+Splitting them into seperate columns provides useful insight on these features.
+
+```{r,echo = FALSE,message= FALSE}
+glimpse(train_frac$matchType)
+
+gamemode <- train_frac %>%
+  mutate(matchType = fct_lump(matchType,6))%>%
+  separate(matchType,sep = "-",into = c("group","gamemode"))%>%
+  mutate(gamemode = ifelse(is.na(gamemode),"tpp",gamemode),
+         isgroup = case_when(group == "squad" ~ 1,
+                             group == "duo" ~ 1,
+                             TRUE ~ 0))
+
+gamemode%>%
+  mutate(group = str_to_sentence(group),
+         gamemode = str_to_upper(gamemode),
+         group = fct_reorder(group,winPlacePerc))%>%
+  ggplot(aes(group,winPlacePerc))+
+  geom_boxplot(aes(fill = as.factor(isgroup)))+
+  facet_wrap(~gamemode)+
+  scale_y_continuous(labels = percent_format())+
+  theme(axis.title.y = element_blank(),
+        strip.background = element_rect(fill = "orange"), strip.text = element_text(colour = "white", face = "bold"))+
+  labs(y = "Win percent" , x = "", fill = "Group", title = "Percent win based on gamemode and squad group.",subtitle = "On average solo's have a higher win percentage than grouped squads.")
+
+```
+
+## Modelling
+
+For me personally, I always use this workflow.
+
+* One-hot encoding: Turning categorical variables to 1 and 0, so our model can interpret the data.
+* Partitioning: Splitting the data to training and testing sets
+* Preprocessing: Transforming our numerical variables to an even scale so no variable can have more of an influence on the model due to its numerical range.
+* Modelling.
+
+```{r,echo = FALSE,message = FALSE,warning = FALSE}
+full_processed <- full %>%
+  mutate(matchType = fct_lump(matchType,6))%>%
+  separate(matchType,sep = "-",into = c("group","gamemode"))%>%
+  mutate(gamemode = ifelse(is.na(gamemode),"tpp",gamemode),
+         isgroup = case_when(group == "squad" ~ 1,
+                           group == "duo" ~ 1,
+                           TRUE ~ 0))
+
+full_processed_model <- full_processed%>%
+  transmute(winPlacePerc,walkDistance, boosts, weaponsAcquired,killPlace,isgroup = as.factor(isgroup),gamemode = as.factor(gamemode))
+```
+
+#### One-hot encoding
+
+```{r,eval = FALSE}
+dmy <- dummyVars("~." ,data = full_processed_model,fullRank = T)
+### Specific columns
+
+full_trsf <- data.frame(predict(dmy, newdata = full_processed_model))
+```
+
+#### Partitioning
+
+```{r,eval =FALSE}
+training <- full_trsf %>%
+  filter(!is.na(winPlacePerc))
+
+testing <- full_trsf %>%
+  filter(is.na(winPlacePerc))
+```
+
+#### Preprocess, center and scale for numeric variables.
+```{r,eval = FALSE}
+preProcValues <- preProcess(training%>%select(walkDistance,boosts,weaponsAcquired,killPlace),method = c("center", "scale"))
+
+trainTransformed <- predict(preProcValues, training)
+```
+
+#### Random Forest model
+
+```{r,eval=FALSE}
+fit_control <- trainControl(## 2-fold CV
+  method = "cv",
+  number = 2)
+
+rf_grid <- expand.grid(mtry = c(2,3),
+                       splitrule = "extratrees",
+                       min.node.size = c(1,2,3))
+
+rf_fit <- train(winPlacePerc ~ ., 
+                data = trainTransformed, 
+                method = "ranger",
+                tuneGrid = rf_grid,
+                trControl = fit_control)
+
+
+rf_fit
+
+rf_pred <- predict(rf_fit,testing)
+
+ggplot(rf_fit)
+```
+
+![](/post/2015-07-23-r-rmarkdown_files/figure-html)
+
+### Multiple models ensemble
+
+The above workflow generally works for a low number of data with not a-lot of hyperparameter tuning and cross validation, however when the dataset grows and hyperparameters become more complex, this will strain the RAM as there might be not enough space depending on how much RAM is present.
+
+One solution would be to split the training set into multiple models, for example for a 20,000 row dataset, every 5000 rows are split and trained seperatly, and their predictions are averaged out.
+
+The below code, splits the dataset by a specified amount, here "d" is a list of 4 datasets, each dataset is 5000 rows. A model is trained for each data set and saved in "modellist", a prediction is made by each model and saved in "predlist", to ensemble the model each prediction is added and diveded by the number of models.
+
+
+
+```{r,eval = FALSE}
+d <- split(trainTransformed,rep(1:4,each=5000))
+
+modellist <- list()
+for(i in 1:length(d)){
+  
+  rf_fit <- train(winPlacePerc ~ ., 
+                  data = d[[i]], 
+                  method = "ranger",
+                  tuneGrid = rf_grid,
+                  trControl = fit_control)
+  modellist[[i]] <- rf_fit
+}
+
+predlist <- list()
+for(i in 1:2){
+  rf_pred <- predict(modellist[[i]],testing)
+  predlist[[i]] <- rf_pred
+}
+
+
+
+(predlist[[1]]+predlist[[2]]+predlist[[3]]+predlist[[4]])/4
+```
+
+If you have any feedback please let me know!
