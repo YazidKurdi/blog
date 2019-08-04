@@ -1,0 +1,194 @@
+---
+title: "PUBG win predictions using random forests!"
+author: "Yazid Kurdi"
+date: '2019-08-04'
+description: What statistics matters most in PUBG
+editor_options:
+  chunk_output_type: console
+slug: pubg-win-predictions-using-random-forests
+tags:
+- R
+- data science
+- random forest
+- big data
+categories: []
+---
+
+
+
+<p>PlayerUnknown’s Battlegrounds (PUBG) is an online multiplayer battle royale game developed and published by PUBG Corporation. In the game, up to one hundred players parachute onto an island and scavenge for weapons and equipment to kill others while avoiding getting killed themselves. The available safe area of the game’s map decreases in size over time, directing surviving players into tighter areas to force encounters. The last player or team standing wins the round.</p>
+<p>What are the most important predictors that can accuratly predict wether a player loses or wins in a Pubg game?</p>
+<p>This short analysis will focus on simple EDA, modelling, predicting and a solution for large datasets modelling!</p>
+<p>Four libraries are used, trusty “tidyverse” for data manipulation and visualization, “corrplot” for correlation plot visuals, caret for modelling and predicting, scales for adjusting the scales of the graphs and finally base R for large dataset modelling.</p>
+<pre class="r"><code>library(tidyverse)
+library(corrplot)
+library(caret)
+library(scales)</code></pre>
+<div id="eda-exploratory-data-analysis" class="section level2">
+<h2>EDA (Exploratory data analysis)</h2>
+<p>We start with exploring the dataset using a simple summary function and visualizing the target variable using a histrogram.</p>
+<p>Fortunatly, the dataset is pretty clean with no missing data, as cleaning a dataset of missing values can take the majority of time for the whole analysis.</p>
+<p>For a detailed description of each variable you can visit them on this <a href="https://www.kaggle.com/c/pubg-finish-placement-prediction/data">Kaggle</a> competition.</p>
+<pre><code>##       Id              groupId            matchId         
+##  Length:20000       Length:20000       Length:20000      
+##  Class :character   Class :character   Class :character  
+##  Mode  :character   Mode  :character   Mode  :character  
+##                                                          
+##                                                          
+##                                                          
+##     assists            boosts        damageDealt          DBNOs        
+##  Min.   : 0.0000   Min.   : 0.000   Min.   :   0.00   Min.   : 0.0000  
+##  1st Qu.: 0.0000   1st Qu.: 0.000   1st Qu.:   0.00   1st Qu.: 0.0000  
+##  Median : 0.0000   Median : 0.000   Median :  84.03   Median : 0.0000  
+##  Mean   : 0.2318   Mean   : 1.119   Mean   : 130.46   Mean   : 0.6566  
+##  3rd Qu.: 0.0000   3rd Qu.: 2.000   3rd Qu.: 185.53   3rd Qu.: 1.0000  
+##  Max.   :13.0000   Max.   :14.000   Max.   :3087.00   Max.   :21.0000  
+##  headshotKills         heals          killPlace        killPoints    
+##  Min.   : 0.0000   Min.   : 0.000   Min.   :  1.00   Min.   :   0.0  
+##  1st Qu.: 0.0000   1st Qu.: 0.000   1st Qu.: 23.00   1st Qu.:   0.0  
+##  Median : 0.0000   Median : 0.000   Median : 47.00   Median :   0.0  
+##  Mean   : 0.2244   Mean   : 1.376   Mean   : 47.51   Mean   : 502.9  
+##  3rd Qu.: 0.0000   3rd Qu.: 2.000   3rd Qu.: 71.00   3rd Qu.:1170.0  
+##  Max.   :10.0000   Max.   :33.000   Max.   :100.00   Max.   :2069.0  
+##      kills          killStreaks     longestKill     matchDuration 
+##  Min.   : 0.0000   Min.   :0.000   Min.   :  0.00   Min.   : 312  
+##  1st Qu.: 0.0000   1st Qu.:0.000   1st Qu.:  0.00   1st Qu.:1366  
+##  Median : 0.0000   Median :0.000   Median :  0.00   Median :1438  
+##  Mean   : 0.9264   Mean   :0.548   Mean   : 22.33   Mean   :1578  
+##  3rd Qu.: 1.0000   3rd Qu.:1.000   3rd Qu.: 20.50   3rd Qu.:1849  
+##  Max.   :31.0000   Max.   :7.000   Max.   :659.20   Max.   :2217  
+##   matchType            maxPlace        numGroups        rankPoints    
+##  Length:20000       Min.   :  2.00   Min.   :  1.00   Min.   :  -1.0  
+##  Class :character   1st Qu.: 28.00   1st Qu.: 27.00   1st Qu.:  -1.0  
+##  Mode  :character   Median : 30.00   Median : 30.00   Median :1444.0  
+##                     Mean   : 44.65   Mean   : 43.17   Mean   : 894.3  
+##                     3rd Qu.: 49.00   3rd Qu.: 47.00   3rd Qu.:1500.0  
+##                     Max.   :100.00   Max.   :100.00   Max.   :3418.0  
+##     revives        rideDistance         roadKills        swimDistance    
+##  Min.   :0.0000   Min.   :    0.000   Min.   :0.00000   Min.   :  0.000  
+##  1st Qu.:0.0000   1st Qu.:    0.000   1st Qu.:0.00000   1st Qu.:  0.000  
+##  Median :0.0000   Median :    0.000   Median :0.00000   Median :  0.000  
+##  Mean   :0.1631   Mean   :  597.148   Mean   :0.00295   Mean   :  4.368  
+##  3rd Qu.:0.0000   3rd Qu.:    0.005   3rd Qu.:0.00000   3rd Qu.:  0.000  
+##  Max.   :5.0000   Max.   :19360.000   Max.   :6.00000   Max.   :799.500  
+##    teamKills       vehicleDestroys    walkDistance    weaponsAcquired 
+##  Min.   :0.00000   Min.   :0.00000   Min.   :   0.0   Min.   : 0.000  
+##  1st Qu.:0.00000   1st Qu.:0.00000   1st Qu.: 158.7   1st Qu.: 2.000  
+##  Median :0.00000   Median :0.00000   Median : 682.2   Median : 3.000  
+##  Mean   :0.02445   Mean   :0.00845   Mean   :1151.9   Mean   : 3.668  
+##  3rd Qu.:0.00000   3rd Qu.:0.00000   3rd Qu.:1965.0   3rd Qu.: 5.000  
+##  Max.   :3.00000   Max.   :2.00000   Max.   :8972.0   Max.   :45.000  
+##    winPoints       winPlacePerc        set           
+##  Min.   :   0.0   Min.   :0.0000   Length:20000      
+##  1st Qu.:   0.0   1st Qu.:0.2000   Class :character  
+##  Median :   0.0   Median :0.4565   Mode  :character  
+##  Mean   : 604.2   Mean   :0.4732                     
+##  3rd Qu.:1495.0   3rd Qu.:0.7407                     
+##  Max.   :1919.0   Max.   :1.0000</code></pre>
+<p><img src="/post/2019-08-04-pubg-win-predictions-using-random-forests_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<p>A correlation plot describes the relationship of numeric variables with each other, a higher magnitude indicates how correlated the variables are, and the sign indicates the direction.</p>
+<p>Out of the 25 variables, 9 variables were filtered based on having an absolute value of 0.4 or higher.</p>
+<p>Walk distance and KillPlace show heavy correlation with the target variable.</p>
+<p><img src="/post/2019-08-04-pubg-win-predictions-using-random-forests_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+</div>
+<div id="feature-engineering" class="section level2">
+<h2>Feature Engineering</h2>
+<div id="combining-features" class="section level3">
+<h3>Combining features</h3>
+<p>Can new variables explain the underlying trend in our data better than our old variables?</p>
+<p>Distance and kills are categories that are split into sub categories, distance is split into walking,swimming and vehicle, While kills are split into headshot and normal kills.</p>
+<p>Uniting the variables together, we can see that it does not make a significant difference for both kills and distance, we disregard the new “combined” variables.</p>
+<p><img src="/post/2019-08-04-pubg-win-predictions-using-random-forests_files/figure-html/unnamed-chunk-5-1.png" width="672" /><img src="/post/2019-08-04-pubg-win-predictions-using-random-forests_files/figure-html/unnamed-chunk-5-2.png" width="672" /><img src="/post/2019-08-04-pubg-win-predictions-using-random-forests_files/figure-html/unnamed-chunk-5-3.png" width="672" /><img src="/post/2019-08-04-pubg-win-predictions-using-random-forests_files/figure-html/unnamed-chunk-5-4.png" width="672" /></p>
+</div>
+<div id="creating-features" class="section level3">
+<h3>Creating features</h3>
+<p>MatchType variable contains two features within it, game mode(Person perspective) and group(squad,solo,duo).</p>
+<p>Splitting them into seperate columns provides useful insight on these features.</p>
+<pre><code>##  chr [1:20000] &quot;squad-fpp&quot; &quot;squad-fpp&quot; &quot;solo-fpp&quot; &quot;solo&quot; &quot;squad-fpp&quot; ...</code></pre>
+<p><img src="/post/2019-08-04-pubg-win-predictions-using-random-forests_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+</div>
+</div>
+<div id="modelling" class="section level2">
+<h2>Modelling</h2>
+<p>For me personally, I always use this workflow.</p>
+<ul>
+<li>One-hot encoding: Turning categorical variables to 1 and 0, so our model can interpret the data.</li>
+<li>Partitioning: Splitting the data to training and testing sets</li>
+<li>Preprocessing: Transforming our numerical variables to an even scale so no variable can have more of an influence on the model due to its numerical range.</li>
+<li>Modelling.</li>
+</ul>
+<div id="one-hot-encoding" class="section level4">
+<h4>One-hot encoding</h4>
+<pre class="r"><code>dmy &lt;- dummyVars(&quot;~.&quot; ,data = full_processed_model,fullRank = T)
+### Specific columns
+
+full_trsf &lt;- data.frame(predict(dmy, newdata = full_processed_model))</code></pre>
+</div>
+<div id="partitioning" class="section level4">
+<h4>Partitioning</h4>
+<pre class="r"><code>training &lt;- full_trsf %&gt;%
+  filter(!is.na(winPlacePerc))
+
+testing &lt;- full_trsf %&gt;%
+  filter(is.na(winPlacePerc))</code></pre>
+</div>
+<div id="preprocess-center-and-scale-for-numeric-variables." class="section level4">
+<h4>Preprocess, center and scale for numeric variables.</h4>
+<pre class="r"><code>preProcValues &lt;- preProcess(training%&gt;%select(walkDistance,boosts,weaponsAcquired,killPlace),method = c(&quot;center&quot;, &quot;scale&quot;))
+
+trainTransformed &lt;- predict(preProcValues, training)</code></pre>
+</div>
+<div id="random-forest-model" class="section level4">
+<h4>Random Forest model</h4>
+<pre class="r"><code>fit_control &lt;- trainControl(## 2-fold CV
+  method = &quot;cv&quot;,
+  number = 2)
+
+rf_grid &lt;- expand.grid(mtry = c(2,3),
+                       splitrule = &quot;extratrees&quot;,
+                       min.node.size = c(1,2,3))
+
+rf_fit &lt;- train(winPlacePerc ~ ., 
+                data = trainTransformed, 
+                method = &quot;ranger&quot;,
+                tuneGrid = rf_grid,
+                trControl = fit_control)
+
+
+rf_fit
+
+rf_pred &lt;- predict(rf_fit,testing)
+
+ggplot(rf_fit)</code></pre>
+<p><img src="/post/2019-08-04-pubg-win-predictions-using-random-forests_files/RandomForest%20model.PNG" /></p>
+</div>
+<div id="multiple-models-ensemble" class="section level3">
+<h3>Multiple models ensemble</h3>
+<p>The above workflow generally works for a low number of data with not a-lot of hyperparameter tuning and cross validation involved, however when the dataset grows and hyperparameters become more complex, this will strain the RAM as there might be not enough space depending on how much RAM is present.</p>
+<p>One solution would be to split the training set into multiple models, for example for a 20,000 row dataset, every 5000 rows are split and trained seperatly, and their predictions are averaged out.</p>
+<p>The below code, splits the dataset by a specified amount, here “d” is a list of 4 datasets, each dataset is 5000 rows. A model is trained for each data set and saved in “modellist”, a prediction is made by each model and saved in “predlist”, to ensemble the model each prediction is added and diveded by the number of models.</p>
+<pre class="r"><code>d &lt;- split(trainTransformed,rep(1:4,each=5000))
+
+modellist &lt;- list()
+for(i in 1:length(d)){
+  
+  rf_fit &lt;- train(winPlacePerc ~ ., 
+                  data = d[[i]], 
+                  method = &quot;ranger&quot;,
+                  tuneGrid = rf_grid,
+                  trControl = fit_control)
+  modellist[[i]] &lt;- rf_fit
+}
+
+predlist &lt;- list()
+for(i in 1:2){
+  rf_pred &lt;- predict(modellist[[i]],testing)
+  predlist[[i]] &lt;- rf_pred
+}
+
+
+
+(predlist[[1]]+predlist[[2]]+predlist[[3]]+predlist[[4]])/4</code></pre>
+<p>If you have any feedback please let me know!</p>
+</div>
+</div>
