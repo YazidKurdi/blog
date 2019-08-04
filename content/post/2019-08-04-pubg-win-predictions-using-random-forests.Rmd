@@ -151,7 +151,7 @@ MatchType variable contains two features within it, game mode(Person perspective
 
 Splitting them into seperate columns provides useful insight on these features.
 
-```{r,echo = FALSE,message= FALSE}
+```{r,echo = FALSE,message= FALSE,warning = FALSE}
 glimpse(train_frac$matchType)
 
 gamemode <- train_frac %>%
