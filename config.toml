@@ -46,8 +46,8 @@ icon = "twitter"
 url = "https://twitter.com/YazidKurdiR"
 
 [[params.social]]
-name = "LinkedIn"
-icon = "LinkedIn"
+name = "Linkedin"
+icon = "linkedin"
 url = "https://www.linkedin.com/in/yazid-kurdi-066b53181/"
 
 [taxonomies]
