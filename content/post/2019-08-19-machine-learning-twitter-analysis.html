@@ -18,12 +18,22 @@ editor_options:
 
 
 
+<pre><code>##  [1] &quot;basic&quot;           &quot;guide&quot;           &quot;starting&quot;       
+##  [4] &quot;career&quot;          &quot;machinelearning&quot; &quot;analytics&quot;      
+##  [7] &quot;india&quot;           &quot;magazine&quot;        &quot;basic&quot;          
+## [10] &quot;guide&quot;           &quot;starting&quot;        &quot;career&quot;         
+## [13] &quot;machinelearning&quot; &quot;analytics&quot;       &quot;india&quot;          
+## [16] &quot;magazine&quot;        &quot;current&quot;         &quot;era&quot;            
+## [19] &quot;live&quot;            &quot;progressing&quot;     &quot;rapid&quot;          
+## [22] &quot;rate&quot;            &quot;creating&quot;        &quot;technology&quot;     
+## [25] &quot;https&quot;           &quot;https&quot;</code></pre>
 <p>Twitter hosts the perfect enviroment for text analysis, the icing on the cake is the rtweet package. The rtweet package provides an API to gather text data on twitter easily, it contains an option to specify the geographical location. Every tweet that has the keyword “machine learning” as a plain text or a hashtag is collected and tokenized (split up to individual words), common words such as “the”, “of” and “to” are removed since they are not useful and do not add value to the analysis.</p>
 <p>What I had in mind was to do the analysis using tweets from Jordan, unfortunately due to the very low amount of said keyword in Jordan, United States of America was chosen.</p>
 <p>Due to the limitations of the API, the dataset contains 7 days ranging from 12th August to 19th August 2019. The analysis is heavily influenced by <a href="https://www.tidytextmining.com/">Text Mining with R</a> written by Julia Silge and David Robinson.</p>
 <div id="word-count-sentiment-analysis" class="section level3">
 <h3>Word count &amp; Sentiment analysis</h3>
-<p>After tokenizing each tweet we can see that “https”,“learning” and “machine” are filtered out, after filtering we can see that terms such as “fairness”,“burden” and “project_veritas” are all associated with concerns about machine learning and AI trajectory.</p>
+<p>After tokenizing each tweet we can see that “https”,“learning” and “machine” have the majority counts, “https” occurs in every tweet with a linked URL and “machine” and “learning” are the subject of study, these terms are filtered out.</p>
+<p>After filtering we can see that terms such as “fairness”,“burden” and “project_veritas” are all associated with concerns about machine learning and AI’s future trajectory.</p>
 <p><img src="/post/2019-08-19-machine-learning-twitter-analysis_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
 <p>Using the <a href="https://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm">NRC lexicon</a> by Saif Mohammad, we can see the distribution of sentiments, zooming in on the “fearful” and “negative” sentiments, we can see which terms contribute most.</p>
 <p><img src="/post/2019-08-19-machine-learning-twitter-analysis_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
@@ -40,7 +50,7 @@ Here TF-IDF (term frequency-inverse document frequency) can help us.</p>
 <p>The following charts show the most likely word pair to occur per word, we can see “Project Veritas” words are most connected with concern sentiment about machine learning and AI.</p>
 <p><img src="/post/2019-08-19-machine-learning-twitter-analysis_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
 <p>A network graph would give a clear overview of how the words are clustered, word clusters indicate that these words are most likely to be found together in a sentence.</p>
-<p>We can see clusters that describes concern words in the top half of the network, bottom right cluster indicates a campaign sentence for a group of people in kenya to travel to a data science event, where as the bottom cluster shows technical aspects of machine learning.</p>
+<p>We can see clusters that describes concern words in the top half of the network, bottom right cluster indicates a campaign sentence for a group of people in kenya that wanted to travel to a data science event, where as the bottom cluster shows technical aspects of machine learning.</p>
 <p><img src="/post/2019-08-19-machine-learning-twitter-analysis_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
 <p>To take a deeper look into each topic, we model them using Latent Dirichlet Allocation (LDA), LDA is a clustering method similiar to K-means.</p>
 <p>The per-topic-per-word probabilities are called “beta” from the model, while the per-document-per-topic probabilities are called “gamma”.</p>

@@ -45,6 +45,10 @@ tokens <- USA %>%
   mutate(index = row_number())%>%
   unnest_tokens(word,text)%>%
   anti_join(stop_words)
+
+tokens%>%
+  filter(index == 1)%>%
+  pull(word)
 ```
 
 Twitter hosts the perfect enviroment for text analysis, the icing on the cake is the rtweet package. The rtweet package provides an API to gather text data on twitter easily, it contains an option to specify the geographical location. Every tweet that has the keyword "machine learning" as a plain text or a hashtag is collected and tokenized (split up to individual words), common words such as “the”, “of” and “to” are removed since they are not useful and do not add value to the analysis.
@@ -55,7 +59,9 @@ Due to the limitations of the API, the dataset contains 7 days ranging from 12th
 
 ### Word count & Sentiment analysis
 
-After tokenizing each tweet we can see that "https","learning" and "machine" are filtered out, after filtering we can see that terms such as "fairness","burden" and "project_veritas" are all associated with concerns about machine learning and AI trajectory.
+After tokenizing each tweet we can see that "https","learning" and "machine" have the majority counts, "https" occurs in every tweet with a linked URL and "machine" and "learning" are the subject of study, these terms are filtered out.
+
+After filtering we can see that terms such as "fairness","burden" and "project_veritas" are all associated with concerns about machine learning and AI's future trajectory.
 
 ```{r,echo = FALSE,message = FALSE}
 #jordan <- search_tweets("machine learning",n = 100,geocode = "31.9539,35.9106,50mi")
@@ -69,7 +75,7 @@ x1 <- tokens%>%
   geom_col(fill = "steelblue")+
   geom_label(aes(label = n),size = 3)+
   coord_flip()+
-  labs(x= "", y = "Count", title = "Most common words associated with 'machine learning'",subtitle = "'https' is an attribute to each tweet, and the words 'machine' and 'learning' are reduntant terms since the\nsince the analysis is about them")+
+  labs(x= "", y = "Count", title = "Most common words associated with 'machine learning'")+
   theme(text=element_text(family="serif"),plot.title = element_text(face="bold"))
 
 tokens_filtered <- tokens %>%
@@ -252,7 +258,7 @@ grid.arrange(x8,x9,x10,x11,nrow = 4 , ncol = 1,top = textGrob("Top 10 most corre
 
 A network graph would give a clear overview of how the words are clustered, word clusters indicate that these words are most likely to be found together in a sentence. 
 
-We can see clusters that describes concern words in the top half of the network, bottom right cluster indicates a campaign sentence for a group of people in kenya to travel to a data science event, where as  the bottom cluster shows technical aspects of machine learning.
+We can see clusters that describes concern words in the top half of the network, bottom right cluster indicates a campaign sentence for a group of people in kenya that wanted to travel to a data science event, where as  the bottom cluster shows technical aspects of machine learning.
 
 ```{r,echo=FALSE}
 
