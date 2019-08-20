@@ -47,7 +47,7 @@ tokens <- USA %>%
   anti_join(stop_words)
 ```
 
-Twitter hosts the perfect enviroment for text analysis, the icing on the cake is the rtweet package. The rtweet package provides an API to gather text data on twitter easily, it contains an option to specify the geographical location. Every tweet that has the keyword "machine learning" as a plain text or a hashtag is collected and tokenized (split up to individual words), common words such as “the”, “of” and “to” are not useful and do not add value to the analysis.
+Twitter hosts the perfect enviroment for text analysis, the icing on the cake is the rtweet package. The rtweet package provides an API to gather text data on twitter easily, it contains an option to specify the geographical location. Every tweet that has the keyword "machine learning" as a plain text or a hashtag is collected and tokenized (split up to individual words), common words such as “the”, “of” and “to” are removed since they are not useful and do not add value to the analysis.
 
 What I had in mind was to do the analysis using tweets from Jordan, unfortunately due to the very low amount of said keyword in Jordan, United States of America was chosen.
 
