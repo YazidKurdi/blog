@@ -1,0 +1,53 @@
+---
+title: Machine learning twitter analysis
+description: Text analysis of the words associated with "machine learning"
+author: Yazid
+date: '2019-08-19'
+slug: machine-learning-twitter-analysis
+categories: []
+tags:
+  - twitter
+  - machine learning
+  - text analysis
+  - NLP
+  - natural language processing
+draft: no
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+<p>Twitter hosts the perfect enviroment for text analysis, the icing on the cake is the rtweet package. The rtweet package provides an API to gather text data on twitter easily, it contains an option to specify the geographical location. Every tweet that has the keyword “machine learning” as a plain text or a hashtag is collected and tokenized (split up to individual words), common words such as “the”, “of” and “to” are not useful and do not add value to the analysis.</p>
+<p>What I had in mind was to do the analysis using tweets from Jordan, unfortunately due to the very low amount of said keyword in Jordan, United States of America was chosen.</p>
+<p>Due to the limitations of the API, the dataset contains 7 days ranging from 12th August to 19th August 2019. The analysis is heavily influenced by <a href="https://www.tidytextmining.com/">Text Mining with R</a> written by Julia Silge and David Robinson.</p>
+<div id="word-count-sentiment-analysis" class="section level3">
+<h3>Word count &amp; Sentiment analysis</h3>
+<p>After tokenizing each tweet we can see that “https”,“learning” and “machine” are filtered out, after filtering we can see that terms such as “fairness”,“burden” and “project_veritas” are all associated with concerns about machine learning and AI trajectory.</p>
+<p><img src="/post/2019-08-19-machine-learning-twitter-analysis_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<p>Using the <a href="https://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm">NRC lexicon</a> by Saif Mohammad, we can see the distribution of sentiments, zooming in on the “fearful” and “negative” sentiments, we can see which terms contribute most.</p>
+<p><img src="/post/2019-08-19-machine-learning-twitter-analysis_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<p>Wordclouds are always efficient in providing visual insight, the left one shows the general trend while the right one shows the positive-negative differences.</p>
+<p><img src="/post/2019-08-19-machine-learning-twitter-analysis_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+</div>
+<div id="tf-idfnetwork-graph-and-topic-modelling" class="section level3">
+<h3>TF-IDF,network graph and topic modelling</h3>
+<p>Previously, we were focused on the terms in the per tweet level, but what about the per user level, what are the significant words per user?
+Here TF-IDF (term frequency-inverse document frequency) can help us.</p>
+<p>without focusing too much behind the mathmatics, it reduces the weights of common words, while increasing the weights for rare ones. TF-IDF attempts to find the most significant words accounting for the words repetition.</p>
+<p><img src="/post/2019-08-19-machine-learning-twitter-analysis_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<p>Who needs bar charts when you can have lollipops?</p>
+<p>The following charts show the most likely word pair to occur per word, we can see “Project Veritas” words are most connected with concern sentiment about machine learning and AI.</p>
+<p><img src="/post/2019-08-19-machine-learning-twitter-analysis_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<p>A network graph would give a clear overview of how the words are clustered, word clusters indicate that these words are most likely to be found together in a sentence.</p>
+<p>We can see clusters that describes concern words in the top half of the network, bottom right cluster indicates a campaign sentence for a group of people in kenya to travel to a data science event, where as the bottom cluster shows technical aspects of machine learning.</p>
+<p><img src="/post/2019-08-19-machine-learning-twitter-analysis_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<p>To take a deeper look into each topic, we model them using Latent Dirichlet Allocation (LDA), LDA is a clustering method similiar to K-means.</p>
+<p>The per-topic-per-word probabilities are called “beta” from the model, while the per-document-per-topic probabilities are called “gamma”.</p>
+<p>We can see using K = 3 (3 topics), as there were 3 main clusters that were present in the network graph. Based on the LDA algorithm topic 1 is mainly influenced by concerned words, topic 2 by general machine learning terms and topic 3 by AI influenced terms.</p>
+<p><img src="/post/2019-08-19-machine-learning-twitter-analysis_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p>Since we already established that each twitter user is considered as a document, we can look at the per-document-per-topic probabilities.
+4 Twitter users were chosen randomly to check thier probabilities, for anonymity purposes the twitter handle was replaced with “Twitter1-4”.</p>
+<p>The model estimates that each word in tweets for Twitter1 user has around 100% probability of coming from topic 1, while Twitter4 has around 25% probability of words coming from topic 1 and a 75% probability of words coming from topic 3.</p>
+<p><img src="/post/2019-08-19-machine-learning-twitter-analysis_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+</div>

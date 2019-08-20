@@ -1,0 +1,323 @@
+---
+title: Machine learning twitter analysis
+description: Text analysis of the words associated with "machine learning"
+author: Yazid
+date: '2019-08-19'
+slug: machine-learning-twitter-analysis
+categories: []
+tags:
+  - twitter
+  - machine learning
+  - text analysis
+  - NLP
+  - natural language processing
+draft: no
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, echo = FALSE,message=FALSE,warning=FALSE}
+library(tidyverse)
+library(rtweet)
+library(tidytext)
+library(textdata)
+library(broom)
+library(wordcloud)
+library(reshape2)
+library(widyr)
+library(igraph)
+library(ggraph)
+library(tm)
+library(topicmodels)
+library(gridExtra)
+library(grid)
+set.seed(2019)
+```
+
+```{r, echo=FALSE,message=FALSE}
+USA <- read_csv("/Users/USER10/Desktop/Rstudio Projects/Projects code/Alone/Tweets_machine_learning/USA machine learning.csv") %>%
+  mutate(text = str_remove_all(text,"[^ /]+/[^ /]+") %>%
+           str_remove_all("/|:"))
+
+nrc <- textdata::lexicon_nrc()
+
+tokens <- USA %>%
+  mutate(index = row_number())%>%
+  unnest_tokens(word,text)%>%
+  anti_join(stop_words)
+```
+
+Twitter hosts the perfect enviroment for text analysis, the icing on the cake is the rtweet package. The rtweet package provides an API to gather text data on twitter easily, it contains an option to specify the geographical location. Every tweet that has the keyword "machine learning" as a plain text or a hashtag is collected and tokenized (split up to individual words), common words such as “the”, “of” and “to” are not useful and do not add value to the analysis.
+
+What I had in mind was to do the analysis using tweets from Jordan, unfortunately due to the very low amount of said keyword in Jordan, United States of America was chosen.
+
+Due to the limitations of the API, the dataset contains 7 days ranging from 12th August to 19th August 2019. The analysis is heavily influenced by [Text Mining with R](https://www.tidytextmining.com/) written by Julia Silge and David Robinson.
+
+### Word count & Sentiment analysis
+
+After tokenizing each tweet we can see that "https","learning" and "machine" are filtered out, after filtering we can see that terms such as "fairness","burden" and "project_veritas" are all associated with concerns about machine learning and AI trajectory.
+
+```{r,echo = FALSE,message = FALSE}
+#jordan <- search_tweets("machine learning",n = 100,geocode = "31.9539,35.9106,50mi")
+#USA <- search_tweets("machine learning",n = 10000 ,geocode = lookup_coords("usa"))
+
+x1 <- tokens%>%
+  count(word,sort = TRUE)%>%
+  head(10)%>%
+  mutate(word = fct_reorder(word,n))%>%
+  ggplot(aes(word,n))+
+  geom_col(fill = "steelblue")+
+  geom_label(aes(label = n),size = 3)+
+  coord_flip()+
+  labs(x= "", y = "Count", title = "Most common words associated with 'machine learning'",subtitle = "'https' is an attribute to each tweet, and the words 'machine' and 'learning' are reduntant terms since the\nsince the analysis is about them")+
+  theme(text=element_text(family="serif"),plot.title = element_text(face="bold"))
+
+tokens_filtered <- tokens %>%
+  filter(!word %in% c("https","t.co","learning","machine","machinelearning"))
+
+x2 <-  tokens_filtered %>%
+  count(word,sort = TRUE)%>%
+  head(10)%>%
+  mutate(word = fct_reorder(word,n))%>%
+  ggplot(aes(word,n))+
+  geom_col(fill = "steelblue")+
+  geom_label(aes(label = n),size = 3)+
+  coord_flip()+
+  labs(x= "", y = "Count", title = "Most common words associated with 'machine learning' after filtering")+
+  theme(text=element_text(family="serif"),plot.title = element_text(face="bold"))
+
+
+gridExtra::grid.arrange(x1,x2)
+```
+
+Using the [NRC lexicon](https://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm ) by Saif Mohammad, we can see the distribution of sentiments, zooming in on the "fearful" and "negative" sentiments, we can see which terms contribute most.
+
+```{r,echo=FALSE,message = FALSE}
+sentiment_nrc <-tokens_filtered %>%
+  inner_join(nrc)
+
+x3 <- sentiment_nrc %>%
+  count(sentiment,sort =TRUE)%>%
+  mutate(sentiment = fct_reorder(sentiment,n))%>%
+  ggplot(aes(sentiment,n))+
+  geom_col(fill = "steelblue")+
+  geom_label(aes(label = n),size = 3)+
+  coord_flip()+
+  labs(x= "", y = "Count", title = "Most common sentiments associated with 'machine learning'",subtitle = "Positive and trust lead the way, however due to the many fears concerning AI, anticipation, fear and negative follow")+
+  theme(plot.subtitle = element_text(size = 8),text=element_text(family="serif"),plot.title = element_text(face="bold"))
+
+
+
+x4 <- sentiment_nrc %>%
+  filter(sentiment == "fear")%>%
+  count(word,sort =TRUE)%>%
+  head(15)%>%
+  mutate(word = fct_reorder(word,n))%>%
+  ggplot(aes(word,n))+
+  geom_col(fill = "steelblue")+
+  geom_label(aes(label = n),size = 2)+
+  coord_flip()+
+  labs(x= "", y = "Count", title = "Most common words with a fearful sentiment")+
+  theme(plot.title = element_text(size = 9,face = "bold"),text=element_text(family="serif"))
+
+
+x5 <- sentiment_nrc %>%
+  filter(sentiment == "negative")%>%
+  count(word,sort =TRUE)%>%
+  head(15)%>%
+  mutate(word = fct_reorder(word,n))%>%
+  ggplot(aes(word,n))+
+  geom_col(fill = "steelblue")+
+  geom_label(aes(label = n),size = 2)+
+  coord_flip()+
+  labs(x= "", y = "Count", title = "Most common words with a negative sentiment")+
+  theme(plot.title = element_text(size = 9,face = "bold"),text=element_text(family="serif"))
+
+grid.arrange(x3,arrangeGrob(x4,x5, ncol=2),nrow = 2)
+
+```
+
+Wordclouds are always efficient in providing visual insight, the left one shows the general trend while the right one shows the positive-negative differences.
+
+```{r,echo= FALSE,message = FALSE,warning = FALSE}
+
+par(mfrow=c(1,2))
+
+
+x6 <- tokens_filtered %>%
+  anti_join(stop_words) %>%
+  count(word,sort = TRUE) %>%
+  with(wordcloud(word, n, max.words = 80,scale = c(3,.3)))
+
+x7 <- tokens_filtered %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("red", "steelblue"),
+                   max.words = 70,title.size = 0.01,scale = c(3,.3))
+```
+
+### TF-IDF,network graph and topic modelling
+
+Previously, we were focused on the terms in the per tweet level, but what about the per user level, what are the significant words per user?
+Here TF-IDF (term frequency-inverse document frequency) can help us.
+
+without focusing too much behind the mathmatics, it reduces the weights of common words, while increasing the weights for rare ones. TF-IDF attempts to find the most significant words accounting for the words repetition.
+
+```{r,echo = FALSE}
+
+tf_idf <- tokens_filtered%>%
+  count(screen_name,word,sort =TRUE)%>%
+  bind_tf_idf(word,screen_name,n)%>%
+  filter(n > 20)%>%
+  arrange(desc(tf_idf))
+
+tf_idf%>%
+  mutate(word = reorder_within(word,tf_idf,screen_name),
+         word = factor(word, levels = rev(unique(word)))) %>% 
+  ggplot(aes(word, tf_idf, fill = screen_name)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = NULL, y = "tf-idf") +
+  facet_wrap(~screen_name, nrow = 2, scales = "free") +
+  scale_x_reordered()+
+  coord_flip()+
+  labs(y="TF-IDF",title = "Most significant words used by users with more than 15 occurrences per word")+
+  theme(plot.title = element_text(size = 12,face = "bold"),text=element_text(family="serif"),axis.text.x = element_text(size = 7))
+
+```
+
+Who needs bar charts when you can have lollipops?
+
+The following charts show the most likely word pair to occur per word, we can see "Project Veritas" words are most connected with concern sentiment about machine learning and AI.
+
+```{r,echo=FALSE}
+
+word_cors <- tokens_filtered%>%
+  group_by(word) %>%
+  filter(n() >= 100) %>%
+  pairwise_cor(word,index, sort = TRUE)
+###(for viz, filter for "data,google,ai,project_veritas")
+
+data <- word_cors%>%
+  filter(item1 == "data")%>%
+  head(10)%>%
+  mutate(item2 = fct_reorder(item2,correlation))
+
+x8 <- data%>%
+  ggplot(aes(item2,correlation))+
+  geom_point(size=5, color="red", fill=alpha("orange", 0.3), alpha=0.7, shape=21, stroke=2)  + 
+  geom_segment(aes(x=item2, xend=item2, y=0, yend=correlation),color=ifelse(data$item2 == "science", "orange", "grey"),size=ifelse(data$item2 == "science", 1.3, 0.7))+
+  labs(x = "", y = "",title = "Data")+
+  theme(axis.text.x = element_text(size = 7),plot.title = element_text(hjust = 0.5,face = "bold"),text=element_text(family="serif"))
+
+google <- word_cors%>%
+  filter(item1 == "google")%>%
+  head(10)%>%
+  mutate(item2 = fct_reorder(item2,correlation))
+
+x9 <- google%>%
+  ggplot(aes(item2,correlation))+
+  geom_point(size=5, color="red", fill=alpha("orange", 0.3), alpha=0.7, shape=21, stroke=2)  + 
+  geom_segment(aes(x=item2, xend=item2, y=0, yend=correlation),color=ifelse(google$item2 == "public", "orange", "grey"),size=ifelse(google$item2 == "public", 1.3, 0.7))+
+  labs(x = "", y = "",title = "Google")+
+  theme(axis.text.x = element_text(size = 7),plot.title = element_text(hjust = 0.5,face = "bold"),text=element_text(family="serif"))
+
+ai <- word_cors%>%
+  filter(item1 == "ai")%>%
+  head(10)%>%
+  mutate(item2 = fct_reorder(item2,correlation))
+
+x10 <- ai%>%
+  ggplot(aes(item2,correlation))+
+  geom_point(size=5, color="red", fill=alpha("orange", 0.3), alpha=0.7, shape=21, stroke=2)  + 
+  geom_segment(aes(x=item2, xend=item2, y=0, yend=correlation),color=ifelse(ai$item2 == "iot", "orange", "grey"),size=ifelse(ai$item2 == "iot", 1.3, 0.7))+
+  labs(x = "", y = "",title = "AI")+
+  theme(axis.text.x = element_text(size = 7),plot.title = element_text(hjust = 0.5,face = "bold"),text=element_text(family="serif"))
+
+project_veritas <- word_cors%>%
+  filter(item1 == "project_veritas")%>%
+  head(10)%>%
+  mutate(item2 = fct_reorder(item2,correlation))
+
+x11 <- project_veritas%>%
+  ggplot(aes(item2,correlation))+
+  geom_point(size=5, color="red", fill=alpha("orange", 0.3), alpha=0.7, shape=21, stroke=2)  + 
+  geom_segment(aes(x=item2, xend=item2, y=0, yend=correlation),color=ifelse(project_veritas$item2 == "lifted", "orange", "grey"),size=ifelse(project_veritas$item2 == "lifted", 1.3, 0.7))+
+  labs(x = "", y = "",title = "Project Veritas")+
+  theme(axis.text.x = element_text(size = 7),plot.title = element_text(hjust = 0.5,face = "bold"),text=element_text(family="serif"))
+
+grid.arrange(x8,x9,x10,x11,nrow = 4 , ncol = 1,top = textGrob("Top 10 most correlated words",gp=gpar(fontsize=20,font=3)),left = textGrob("Correlation",gp=gpar(fontsize=30,font=3),rot = 90))
+
+```
+
+A network graph would give a clear overview of how the words are clustered, word clusters indicate that these words are most likely to be found together in a sentence. 
+
+We can see clusters that describes concern words in the top half of the network, bottom right cluster indicates a campaign sentence for a group of people in kenya to travel to a data science event, where as  the bottom cluster shows technical aspects of machine learning.
+
+```{r,echo=FALSE}
+
+x12 <- word_cors%>%
+  filter(correlation > .5) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = correlation), show.legend = FALSE) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE) +
+  theme_void()
+
+x12
+
+```
+
+To take a deeper look into each topic, we model them using Latent Dirichlet Allocation (LDA), LDA is a clustering method similiar to K-means.
+
+The per-topic-per-word probabilities are called "beta" from the model, while the per-document-per-topic probabilities are called "gamma".
+
+We can see using K = 3 (3 topics), as there were 3 main clusters that were present in the network graph. Based on the LDA algorithm topic 1 is mainly influenced by concerned words, topic 2 by general machine learning terms and topic 3 by AI influenced terms.
+
+```{r,echo = FALSE}
+dtm <- tokens_filtered%>%
+  count(word,screen_name,sort =TRUE)%>%
+  cast_dtm(screen_name,word,n)
+
+lda <- LDA(dtm, k = 3, control = list(seed = 2019))
+
+topics_beta <- tidy(lda, matrix = "beta")
+
+topic_terms <- topics_beta %>%
+  group_by(topic) %>%
+  top_n(10, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+topic_terms %>%
+  mutate(term = reorder_within(term, beta,topic)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_x_reordered()+
+  coord_flip()+
+  labs(x= "",title = "Topics that were found using LDA model",y = "Beta")+
+  theme(plot.title = element_text(hjust = 0.5,face = "bold"),text=element_text(family="serif"))
+```
+
+Since we already established that each twitter user is considered as a document, we can look at the per-document-per-topic probabilities.
+4 Twitter users were chosen randomly to check thier probabilities, for anonymity purposes the twitter handle was replaced with "Twitter1-4".
+
+The model estimates that each word in tweets for Twitter1 user has around 100% probability of coming from topic 1, while Twitter4 has around 25% probability of words coming from topic 1 and a 75% probability of words coming from topic 3.
+
+
+```{r,echo=FALSE}
+topics_gamma <- tidy(lda, matrix = "gamma")
+
+topics_gamma %>%
+  filter(document %in% c("AINewsFeed","PeterKRogan","KaylaBurrows2","REALDANIELGLENN"))%>%
+  mutate(document = reorder(document, gamma * topic),
+         document = fct_recode(document,Twitter1 = "REALDANIELGLENN",Twitter2 = "AINewsFeed",Twitter3 = "PeterKRogan",Twitter4 = "KaylaBurrows2")) %>%
+  ggplot(aes(factor(topic), gamma)) +
+  geom_boxplot() +
+  facet_wrap(~ document)+
+  labs(x = "Topic",y="Gamma probability",title = "Per-document-per-topic probability")+
+  theme(plot.title = element_text(hjust = 0.5,face = "bold"),text=element_text(family="serif"))
+```
+
