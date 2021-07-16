@@ -1,0 +1,371 @@
+---
+title: Rossman Store Sales Prediction
+author: Yazid Kurdi
+date: '2021-07-16'
+categories: []
+tags:
+  - XGB
+  - machine learning
+  - Kaggle
+  - Rossman
+draft: no
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+setwd("/Users/latal/Desktop/Blogdown/")
+blogdown::serve_site()
+blogdown::check_site()
+blogdown::build_site()
+```
+
+
+```{r, echo = FALSE,message=FALSE,warning=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(lubridate)
+library(janitor)
+library(scales)
+library(skimr)
+library(ggridges)
+library(gridExtra)
+theme_set(theme_light()+theme(text=element_text(family="serif"),plot.title = element_text(face="bold")))
+```
+
+```{r, echo = FALSE,message=FALSE,warning=FALSE}
+store <- read_csv("/Users/latal/Desktop/Kaggle/Rossman Store Sales/store.csv")%>%
+  clean_names()
+
+train <- read_csv("/Users/latal/Desktop/Kaggle/Rossman Store Sales/train.csv")%>%
+  clean_names()%>%
+  select(-customers)%>%
+  left_join(store)
+
+# test <- read_csv("/Users/latal/Desktop/Kaggle/Rossman Store Sales/test.csv")%>%
+#   clean_names()%>%
+#   select(-id)%>%
+#   left_join(store)
+# 
+# id <- read_csv("/Users/latal/Desktop/Kaggle/Rossman Store Sales/test.csv")%>%
+#   select(Id)
+# 
+# sample <- read_csv("/Users/latal/Desktop/Kaggle/Rossman Store Sales/sample_submission.csv")
+
+```
+The following project studies a [Kaggle](https://www.kaggle.com/) use case to predict sales volume for Rossman drug store.
+
+Rossmann operates over 3,000 drug stores in 7 European countries. Currently, Rossmann store managers are tasked with predicting their daily sales for up to six weeks in advance. Store sales are influenced by many factors, including promotions, competition, school and state holidays, seasonality, and locality. With thousands of individual managers predicting sales based on their unique circumstances, the accuracy of results can be quite varied.
+
+An overview of the training set shows that there are ~1,000,000 rows and 17 columns (1 date, 3 character and 13 numeric), ranging from 2013 till 2015.
+
+
+## Explanatory Data Analysis
+
+```{r, echo = FALSE,message=FALSE,warning=FALSE}
+train %>%
+  skim()
+```
+## Target Variable
+
+There are closed stores in the dataset which surely have no sales volume, the distribution of sales shows a log normal distribution after filtering for open stores.
+
+```{r, echo = FALSE,message=FALSE,warning=FALSE}
+x1 <- train%>%
+  ggplot(aes(sales,fill = as.factor(open)))+
+  geom_histogram()+
+  labs(y = "",x = "Sales",fill = "Open",title = "Distribution of Sales",subtitle = "Closed Stores in the dataset reflect no sales")
+
+x2 <- train%>%
+  filter(open == 1)%>%
+  ggplot(aes(sales))+
+  geom_histogram(fill = "steelblue")+
+  scale_x_log10()+
+  labs(y = "",x = "Sales",fill = "Open",title = "Removing closed stores shows a relative log normal distribution")
+
+grid.arrange(x1,x2,nrow = 2)
+```
+
+## Time series exploration
+
+Fluctation of both average sales and total sales, spiking end of year, effect could be due to natural seasonality or promotions done during that time of year. 
+
+Negative correlation, average sale with total sales, could be due to decrease in number of customers, keeping in mind training data is only until Q3 2015, which could be misleading.
+
+Day of week exhibts clear ordinality, as the week starts sales are relativly low as when it ends, with an abnormal distribution on the weekend (day 7)
+
+
+```{r, echo = FALSE,message=FALSE,warning=FALSE}
+sales_by <- function(tbl,by){
+  tbl %>%
+  group_by(date = lubridate::floor_date(date, by))%>%
+  summarize(total_sales = sum(sales),average_sales = mean(sales))%>%
+  ungroup()
+}
+
+x3 <- train%>%
+  sales_by(by = "month")%>%
+  gather(key,value,-date)%>%
+  mutate(key = str_to_title(str_replace(key,"_"," ")))%>%
+  ggplot(aes(date,value))+
+  facet_wrap(~key,scales = "free_y")+
+  geom_line()+
+  geom_point()+
+  scale_y_continuous(labels = dollar_format())+
+  labs(y = "Sales",x= "",title = "Average and total sales by month",subtitle = "Clear seasonality effect, spiking end of year for both average sales")
+
+x4 <- train%>%
+  sales_by(by = "year")%>%
+  gather(key,value,-date)%>%
+  mutate(key = str_to_title(str_replace(key,"_"," ")))%>%
+  ggplot(aes(date,value))+
+  facet_wrap(~key,scales = "free_y")+
+  geom_line()+
+  geom_point()+
+  scale_y_continuous(labels = dollar_format())+
+  scale_x_date(breaks = seq(as.Date("2013-01-01"), as.Date("2015-12-31"), by="1 years"),
+               labels = date_format("%Y"))+
+  labs(y = "Sales",x= "",title = "Average and total sales by Year",subtitle = "Negative correlation between average sales and total sales")
+
+
+
+x5 <- train%>%
+  filter(open == 1)%>%
+  ggplot(aes(x = sales+1,y = as.factor(day_of_week),fill = factor(open)))+
+  geom_density_ridges()+
+  scale_x_log10(labels = dollar_format())+
+  labs(y = "Day of Week",x= "Sales",title = "Ordinal Effect for day of week",subtitle = "Sales start relatively low beginning of week with a gradual increase on the weekend")+
+  theme(legend.position = "none")
+
+grid.arrange(x3,arrangeGrob(x4,x5, ncol=2),nrow = 2)
+
+```
+
+## Categorical
+
+Assortment of goods, promotion and store type are good features to use when predicting sales volume.
+
+All closed stores (Open = 0) have 0 sales and any prediction done on closed stores would be neglected (Consider removing from both training and testing sets)
+
+```{r, echo = FALSE,message=FALSE,warning=FALSE}
+train%>%
+  sample_frac(0.1)%>%
+  select(4:10,"promo2","promo_interval")%>%
+  gather(key,value,2:ncol(.))%>%
+  mutate(key = str_to_title(str_replace(key,"_"," ")))%>%
+  ggplot(aes(as.factor(value),sales))+
+  geom_boxplot()+
+  facet_wrap(~key,scales = "free_x")+
+  theme(axis.text.x = element_text(size = 7))+
+  labs(y = "Sales",x= "Type",title = "Which categorical feature could predict sales?")
+```
+
+## Numeric
+
+One true numeric variable (competition distance), which shows no clear relationship with sales.
+
+```{r, echo = FALSE,message=FALSE,warning=FALSE}
+train%>%
+  filter(open == 1)%>%
+  sample_frac(0.05)%>%
+  ggplot(aes(competition_distance,sales))+
+  geom_point()+
+  geom_smooth(method = "lm")+
+  labs(y = "Sales",x= "Competition Distance",title = "Weak relationship between competition distance and Sales")
+```
+
+
+<!-- #Machine Learning -->
+<!-- ```{r} -->
+
+<!-- doParallel::registerDoParallel(cores = 6) -->
+
+<!-- spl <- initial_split(train) -->
+<!-- training <- training(spl) -->
+<!-- testing <- testing(spl) -->
+
+
+<!-- train_fold <- training %>% -->
+<!--   vfold_cv(v = 3) -->
+
+<!-- mset <- metric_set(rmse) -->
+
+
+<!-- grid_control <- control_grid(save_pred = TRUE, -->
+<!--                              save_workflow = FALSE, -->
+<!--                              extract = extract_model) -->
+<!-- ``` -->
+
+## Linear Regression
+
+A 3 fold cross validation linear regression model with regularization (clear not needed) does poorly on the training dataset, as it can not find linear relationships between the target variables and the predictors.
+
+The model scored a RMSPE of 0.38 placing the model in the top 7000 
+
+```{r, echo = FALSE,message=FALSE,warning=FALSE}
+# lin_rec <- recipe(sales ~ day_of_week + date  + open + promo + state_holiday + school_holiday + store_type + assortment + competition_distance + promo2 + promo2since_week + promo2since_year + promo_interval,data = train)%>%
+#   step_mutate(year = lubridate::year(date),
+#               month = lubridate::month(date),
+#               promo = coalesce(promo,0),
+#               promo2since_week = coalesce(promo2since_week,0),
+#               promo2since_year = coalesce(promo2since_year,0),
+#               promo_interval = coalesce(promo_interval,"No Promo"),
+#               competition_distance = coalesce(competition_distance,0),
+#               state_holiday = coalesce(state_holiday,1))%>%
+#   step_rm(date,promo_interval)%>%
+#   #step_rm(customers)%>%
+#   #step_sample(size = 0.5)%>%
+#   step_log(sales,offset = 1, skip = TRUE)%>%
+#   step_ns(month,deg_free = 5)%>%
+#   step_ns(year,deg_free = 4)%>%
+#   step_dummy(all_nominal_predictors())
+# 
+# 
+# 
+# 
+# lin_model <- linear_reg(mode = "regression",penalty = tune())%>%
+#   set_engine("glmnet")
+# 
+# 
+# lin_wf <- workflow()%>%
+#   add_recipe(lin_rec)%>%
+#   add_model(lin_model)
+#
+# lin_tune <- lin_wf %>%
+#   tune_grid(train_fold,
+#             metrics = mset,
+#             grid = crossing(penalty = 10 ^ seq(-7,-0.5,0.1)),
+#             control = grid_control)
+
+#saveRDS(lin_tune,"/Users/latal/Desktop/Kaggle/Rossman Store Sales/lin_tune.rds")
+lin_tune <- read_rds("/Users/latal/Desktop/Kaggle/Rossman Store Sales/lin_tune.rds")
+
+
+autoplot(lin_tune)+
+  scale_x_log10(labels = comma_format())+
+  labs(y = "RMSE",title = "Linear regression shows high RMSE, compared to the standard deviation of the target variable of 3849$")
+
+
+# lin_trained <- lin_wf %>%
+#   finalize_workflow(select_best(lin_tune))%>%
+#   fit(train)
+#
+# lin_trained %>%
+#   fit(train)%>%
+#   predict(test)%>%
+#   rename(Sales = .pred)%>%
+#   mutate(Id = id$Id,
+#          Sales = exp(Sales)) %>%
+#   select(Id,Sales)%>%
+#   write_csv("/Users/latal/Desktop/Kaggle/Rossman Store Sales/linear_reg_13_07_2021_2.csv")
+
+
+```
+
+
+## XGBoost
+
+
+A 3 fold XGBoost model performs much better than the linear model, mtry (number of predictors to use per split) and number of trees were tuned. 
+
+The model has not stopped learning even at (mtry = 6,trees = 900) which are the best tuned parameters, which means that the model could be further tuned to provide a lower RMSE
+
+The model scored a RMSPE of 0.166 placing the model in the top 500 
+
+
+```{r, echo = FALSE,message=FALSE,warning=FALSE}
+# xgb_rec <- recipe(sales ~ day_of_week + date  + open + promo + state_holiday + school_holiday + store_type + assortment + competition_distance + promo2 + promo2since_week + promo2since_year + promo_interval,data = train)%>%
+#     step_mutate(year = lubridate::year(date),
+#               month = lubridate::month(date))%>%
+#               #state_holiday = coalesce(state_holiday,1),
+#               #open = coalesce(open,1),
+#               #day_of_week = as.factor(day_of_week),
+#               #open = as.factor(open),
+#               #promo = as.factor(promo),
+#               #state_holiday = as.factor(state_holiday),
+#               #school_holiday = as.factor(school_holiday))%>%
+#   #step_naomit(all_predictors(),skip = TRUE)%>%
+#   step_rm(date,skip = TRUE)%>%
+#   #step_rm(customers)%>%
+#   #step_sample(size = 0.5)%>%
+#   step_dummy(store_type,assortment,promo_interval)
+
+
+# xgb_model <- boost_tree(mode = "regression",mtry = tune(),trees = tune())%>%
+#   set_engine("xgboost",num.threads = 8)
+# 
+# xgb_wf <- workflow()%>%
+#   add_recipe(xgb_rec)%>%
+#   add_model(xgb_model)
+#
+# xgb_tune <- xgb_wf %>%
+#   tune_grid(train_fold,
+#             metrics = mset,
+#             grid = crossing(mtry = 4:6,
+#                             trees = seq(500,900,200)),
+#             control = grid_control)
+
+#saveRDS(xgb_tune,"/Users/latal/Desktop/Kaggle/Rossman Store Sales/xgb_tune.rds")
+xgb_tune <- read_rds("/Users/latal/Desktop/Kaggle/Rossman Store Sales/xgb_tune.rds")
+
+autoplot(xgb_tune)+
+  scale_x_log10(labels = comma_format())+
+  labs(y = "RMSE",title = "XGboost tuning performance")
+
+# xgb_split_metrics <- xgb_wf %>%
+#   finalize_workflow(select_best(xgb_tune))%>%
+#   last_fit(spl)
+
+#saveRDS(xgb_split_metrics,"/Users/latal/Desktop/Kaggle/Rossman Store Sales/xgb_split_metrics.rds")
+
+
+
+```
+
+What were the most significant features that the XGBoost model used to predict sales volume?
+
+* Since every store that is closed has 0 sales, the model considers it as an important feature to determine sales which in fact is a redundant feautre
+* Competition distance which showed no linear relationship with sales proved to be a very important feature in the XGB model
+* Whether a store has a promotional event or not is a good indicator for its sales.
+
+
+```{r, echo = FALSE,message=FALSE,warning=FALSE}
+
+xgb_split_metrics <- read_rds("/Users/latal/Desktop/Kaggle/Rossman Store Sales/xgb_split_metrics.rds")
+
+library(vip)
+xgb_split_metrics %>%
+  pluck(".workflow", 1) %>%
+  pull_workflow_fit() %>%
+  vip(num_features = 20)+
+  labs(title = "Important features for XGB model")
+```
+
+
+TODO:
+
+* Further parameter tuning
+* Remove redundant features and evaluate model performance afterwards
+* Ensemble model XGB + Random Forest
+
+
+<!-- # ```{r} -->
+<!-- # xgb_final <- xgb_wf %>% -->
+<!-- #   finalize_workflow(select_best(xgb_tune))%>% -->
+<!-- #   fit(train) -->
+<!-- #  -->
+<!-- # #saveRDS(xgb_final,"/Users/latal/Desktop/Kaggle/Rossman Store Sales/xgb_model.rds") -->
+<!-- # #xgb_final <- read_rds("/Users/latal/Desktop/Kaggle/Rossman Store Sales/xgb_model.rds") -->
+<!-- #  -->
+<!-- # xgb_final%>% -->
+<!-- #   predict(test)%>% -->
+<!-- #   rename(Sales = .pred)%>% -->
+<!-- #   mutate(Id = id$Id)%>% -->
+<!-- #   select(Id,Sales)%>% -->
+<!-- #   write_csv("/Users/latal/Desktop/Kaggle/Rossman Store Sales/xgb_14_07_2021.csv") -->
+<!-- #  -->
+<!-- #  -->
+<!-- # ``` -->
